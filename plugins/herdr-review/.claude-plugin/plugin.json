@@ -1,0 +1,8 @@
+{
+  "name": "herdr-review",
+  "version": "1.0.0",
+  "description": "Multi-model code review through herdr, with a setup skill to configure reviewers.",
+  "author": {
+    "name": "Potato-Y"
+  }
+}

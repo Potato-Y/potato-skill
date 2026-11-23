@@ -1,0 +1,16 @@
+{
+  "name": "potato-skill",
+  "owner": {
+    "name": "Potato-Y"
+  },
+  "metadata": {
+    "description": "Potato-Y's Claude Code plugins."
+  },
+  "plugins": [
+    {
+      "name": "herdr-review",
+      "source": "./plugins/herdr-review",
+      "description": "Multi-model code review through herdr, with a setup skill to configure reviewers."
+    }
+  ]
+}

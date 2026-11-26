@@ -1,6 +1,6 @@
 ---
 name: herdr-review
-description: Multi-model code review through herdr. Runs the reviewer agents configured by /setup-herdr-review (default Codex, Grok and Claude, each with its provider's own review) in hc terminals on a disposable worktree, then verifies and merges their findings and cleans up. Use only when the user invokes it.
+description: Multi-model code review through herdr. Runs the reviewer agents configured by /setup-herdr-review (default Codex, Grok and Claude, each with its provider's own review) in hc terminals on a disposable worktree, then verifies their findings, rates them by severity, merges them and cleans up. Use only when the user invokes it.
 disable-model-invocation: true
 argument-hint: "[target: uncommitted | last commit | <branch> | <A..B> | <path>] [models: e.g. 'codex gpt-6.2-sol, opus'] [skill: provider | <skill name> | /command]"
 ---
@@ -152,23 +152,60 @@ Repeat until every reviewer is done. A `reason: message` return means a
 `hc send`. If the report file already exists, the review is finished. If a
 reviewer wrote no file, take its final answer from `hc read <t> --lines 150`.
 
-## 5. Verify and merge
+## 5. Verify, rate and merge
 
-Read every report. Before passing on any finding rated must-fix or should-fix,
-open the cited code and confirm the failure path yourself. Reviewers are often
-confidently wrong, and the user acts on what you report. Label each finding as
-confirmed, refuted (say why) or unverified.
+The reviewer prompt names no severity scale on purpose: a scale handed to
+reviewers steers what they look for and how they rate it, and the value of
+several models is their independent analysis. You rate the findings, after
+reading the results.
+
+Read every report and merge findings that describe the same problem, keeping
+every reviewer who found it. A reviewer's own label (critical, P1, important,
+nit, or none) is a hint, not the answer: rate each finding by what its failure
+scenario does to users.
+
+| Severity | When | Action |
+|---|---|---|
+| Critical | security hole, data loss or corruption, or breaks most users | fix before merge |
+| High | wrong result or failure on a normal path | fix before merge |
+| Medium | only under specific conditions (edge input, concurrency), or limited impact | fix now or in a follow-up |
+| Low | no behavior impact: naming, readability, maintainability | optional |
+
+Before reporting a finding as Critical, High or Medium, open the cited code and
+confirm the failure path yourself. Reviewers are often confidently wrong, and
+the user acts on what you report. Label each finding confirmed, refuted (say
+why) or unverified; a Low finding may stay unverified. Rate from what you
+confirmed, not from the reviewers' labels. When your rating differs from a
+reviewer's label, note both so the user sees why.
+
+A problem you find yourself while verifying is a finding too: confirm it the
+same way, rate it on the same scale and credit it to `verification`, so the
+user sees every issue in one ranking.
 
 Report to the user:
-1. The verdict: which confirmed issues need fixing, in one or two sentences.
+1. The verdict: which confirmed issues need fixing, in one or two sentences,
+   then the confirmed counts, for example `Critical 1 · High 2 · Medium 0 · Low 3`.
 2. The scope: repo, target mode, files, excluded files, and the
    reviewer/model/effort/skill list.
-3. The confirmed findings with `file:line`, the failure scenario and the fix,
-   plus which reviewer found each.
-4. A comparison table with one row per reviewer (verdict, which findings it
-   caught) when two or more reviewers ran.
-5. What nobody checked (no app run, etc.) and where the reports are
+3. The confirmed findings grouped by severity, Critical first, each group
+   headed with its action from the table (for example
+   `Critical: fix before merge`). For each finding give `file:line`, who found
+   it, the fix, and the failure scenario as short steps (the input, the path
+   through the code, what breaks) rather than one long sentence: the user scans
+   this section to decide what to fix. Write the rating as the severity alone
+   on its own line, with the reason (and any reviewer label that differs) on
+   an indented line below it, so the level reads at a glance.
+   A refuted claim about the same code or problem goes inside that finding:
+   say what was wrong and whether anything still needs fixing, so each issue
+   reaches one conclusion in one place.
+4. Unverified findings, in their own section.
+5. A comparison table with one row per reviewer and fixed columns (verdict,
+   findings caught per severity) when two or more reviewers ran. Never add a
+   column per finding: the table grows unreadable as findings pile up.
+6. What nobody checked (no app run, etc.) and where the reports are
    (`<reports>`; they are kept).
+7. Refuted claims that match no finding, last, one line each: `file:line`,
+   the reviewer, and why it is wrong.
 
 ## 6. Clean up
 
